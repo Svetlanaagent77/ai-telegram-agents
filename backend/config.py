@@ -6,104 +6,162 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class Config:
-    """Основная конфигурация"""
-    
+    """Основная конфигурация - переменные читаются в runtime"""
+
     # Telegram
-    TELEGRAM_BOT_TOKEN_NTD = os.getenv("TELEGRAM_BOT_TOKEN_NTD")
-    TELEGRAM_BOT_TOKEN_DOCS = os.getenv("TELEGRAM_BOT_TOKEN_DOCS")
-    
+    @property
+    def TELEGRAM_BOT_TOKEN_NTD(self):
+        return os.getenv("TELEGRAM_BOT_TOKEN_NTD")
+
+    @property
+    def TELEGRAM_BOT_TOKEN_DOCS(self):
+        return os.getenv("TELEGRAM_BOT_TOKEN_DOCS")
+
     # AI Provider для генерации (deepseek)
-    AI_PROVIDER = os.getenv("AI_PROVIDER", "deepseek")
-    AI_MODEL = os.getenv("AI_MODEL", "deepseek-chat")
-    
+    @property
+    def AI_PROVIDER(self):
+        return os.getenv("AI_PROVIDER", "deepseek")
+
+    @property
+    def AI_MODEL(self):
+        return os.getenv("AI_MODEL", "deepseek-chat")
+
     # API Keys
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-    VOYAGE_API_KEY = os.getenv("VOYAGE_API_KEY")
-    
+    @property
+    def OPENAI_API_KEY(self):
+        return os.getenv("OPENAI_API_KEY")
+
+    @property
+    def ANTHROPIC_API_KEY(self):
+        return os.getenv("ANTHROPIC_API_KEY")
+
+    @property
+    def DEEPSEEK_API_KEY(self):
+        return os.getenv("DEEPSEEK_API_KEY")
+
+    @property
+    def VOYAGE_API_KEY(self):
+        return os.getenv("VOYAGE_API_KEY")
+
     # DeepSeek настройки
-    DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-    
+    @property
+    def DEEPSEEK_BASE_URL(self):
+        return os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+
     # Embeddings - Voyage AI (лучше для русского языка)
-    EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "voyage")  # voyage или openai
-    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "voyage-multilingual-2")
-    EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "1024"))  # 1024 для Voyage
-    
+    @property
+    def EMBEDDING_PROVIDER(self):
+        return os.getenv("EMBEDDING_PROVIDER", "voyage")
+
+    @property
+    def EMBEDDING_MODEL(self):
+        return os.getenv("EMBEDDING_MODEL", "voyage-multilingual-2")
+
+    @property
+    def EMBEDDING_DIMENSION(self):
+        return int(os.getenv("EMBEDDING_DIMENSION", "1024"))
+
     # Pinecone
-    PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-    PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT")
-    PINECONE_INDEX = os.getenv("PINECONE_INDEX", "ai-agents-knowledge-base")
-    
+    @property
+    def PINECONE_API_KEY(self):
+        return os.getenv("PINECONE_API_KEY")
+
+    @property
+    def PINECONE_ENVIRONMENT(self):
+        return os.getenv("PINECONE_ENVIRONMENT")
+
+    @property
+    def PINECONE_INDEX(self):
+        return os.getenv("PINECONE_INDEX", "ai-agents-knowledge-base")
+
     # Database
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost/ai_agents")
-    
+    @property
+    def DATABASE_URL(self):
+        return os.getenv("DATABASE_URL", "postgresql://localhost/ai_agents")
+
     # Application
-    DEBUG = os.getenv("DEBUG", "False").lower() == "true"
-    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-    MAX_RESPONSE_TIME = int(os.getenv("MAX_RESPONSE_TIME", "10"))
-    
+    @property
+    def DEBUG(self):
+        return os.getenv("DEBUG", "False").lower() == "true"
+
+    @property
+    def LOG_LEVEL(self):
+        return os.getenv("LOG_LEVEL", "INFO")
+
+    @property
+    def MAX_RESPONSE_TIME(self):
+        return int(os.getenv("MAX_RESPONSE_TIME", "10"))
+
     # RAG параметры
-    CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
-    CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
-    TOP_K_RESULTS = int(os.getenv("TOP_K_RESULTS", "3"))
-    
-    @classmethod
-    def get_api_key(cls):
+    @property
+    def CHUNK_SIZE(self):
+        return int(os.getenv("CHUNK_SIZE", "1000"))
+
+    @property
+    def CHUNK_OVERLAP(self):
+        return int(os.getenv("CHUNK_OVERLAP", "200"))
+
+    @property
+    def TOP_K_RESULTS(self):
+        return int(os.getenv("TOP_K_RESULTS", "3"))
+
+    def get_api_key(self):
         """Получить API ключ для генерации"""
-        if cls.AI_PROVIDER == "openai":
-            return cls.OPENAI_API_KEY
-        elif cls.AI_PROVIDER == "anthropic":
-            return cls.ANTHROPIC_API_KEY
-        elif cls.AI_PROVIDER == "deepseek":
-            return cls.DEEPSEEK_API_KEY
+        if self.AI_PROVIDER == "openai":
+            return self.OPENAI_API_KEY
+        elif self.AI_PROVIDER == "anthropic":
+            return self.ANTHROPIC_API_KEY
+        elif self.AI_PROVIDER == "deepseek":
+            return self.DEEPSEEK_API_KEY
         return None
-    
-    @classmethod
-    def get_embedding_api_key(cls):
+
+    def get_embedding_api_key(self):
         """Получить API ключ для эмбеддингов"""
-        if cls.EMBEDDING_PROVIDER == "voyage":
-            return cls.VOYAGE_API_KEY
-        elif cls.EMBEDDING_PROVIDER == "openai":
-            return cls.OPENAI_API_KEY
+        if self.EMBEDDING_PROVIDER == "voyage":
+            return self.VOYAGE_API_KEY
+        elif self.EMBEDDING_PROVIDER == "openai":
+            return self.OPENAI_API_KEY
         return None
-    
-    @classmethod
-    def get_base_url(cls):
+
+    def get_base_url(self):
         """Получить base URL для API"""
-        if cls.AI_PROVIDER == "deepseek":
-            return cls.DEEPSEEK_BASE_URL
+        if self.AI_PROVIDER == "deepseek":
+            return self.DEEPSEEK_BASE_URL
         return None
-    
-    @classmethod
-    def validate(cls):
+
+    def validate(self):
         """Проверка обязательных параметров"""
         required = []
-        
-        if not cls.TELEGRAM_BOT_TOKEN_NTD:
+
+        if not self.TELEGRAM_BOT_TOKEN_NTD:
             required.append("TELEGRAM_BOT_TOKEN_NTD")
-        if not cls.TELEGRAM_BOT_TOKEN_DOCS:
+        if not self.TELEGRAM_BOT_TOKEN_DOCS:
             required.append("TELEGRAM_BOT_TOKEN_DOCS")
-        
+
         # Проверка API ключей для генерации
-        if cls.AI_PROVIDER == "openai" and not cls.OPENAI_API_KEY:
+        if self.AI_PROVIDER == "openai" and not self.OPENAI_API_KEY:
             required.append("OPENAI_API_KEY")
-        elif cls.AI_PROVIDER == "anthropic" and not cls.ANTHROPIC_API_KEY:
+        elif self.AI_PROVIDER == "anthropic" and not self.ANTHROPIC_API_KEY:
             required.append("ANTHROPIC_API_KEY")
-        elif cls.AI_PROVIDER == "deepseek" and not cls.DEEPSEEK_API_KEY:
+        elif self.AI_PROVIDER == "deepseek" and not self.DEEPSEEK_API_KEY:
             required.append("DEEPSEEK_API_KEY")
-        
+
         # Проверка API ключей для эмбеддингов
-        if cls.EMBEDDING_PROVIDER == "voyage" and not cls.VOYAGE_API_KEY:
+        if self.EMBEDDING_PROVIDER == "voyage" and not self.VOYAGE_API_KEY:
             required.append("VOYAGE_API_KEY")
-        elif cls.EMBEDDING_PROVIDER == "openai" and not cls.OPENAI_API_KEY:
+        elif self.EMBEDDING_PROVIDER == "openai" and not self.OPENAI_API_KEY:
             required.append("OPENAI_API_KEY (для embeddings)")
-        
-        if not cls.PINECONE_API_KEY:
+
+        if not self.PINECONE_API_KEY:
             required.append("PINECONE_API_KEY")
-        
+
         if required:
             raise ValueError(f"Отсутствуют обязательные переменные окружения: {', '.join(required)}")
-        
+
         return True
+
+
+# Singleton instance
+config = Config()

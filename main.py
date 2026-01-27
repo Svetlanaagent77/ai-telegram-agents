@@ -9,7 +9,7 @@ import sys
 # Добавляем путь к проекту
 sys.path.insert(0, str(Path(__file__).parent))
 
-from backend.config import Config
+from backend.config import config
 from backend.rag.rag_engine import RAGEngine
 from backend.bot.telegram_agent import TelegramAgent
 
@@ -29,7 +29,7 @@ async def main():
     
     # Проверка конфигурации
     try:
-        Config.validate()
+        config.validate()
         logger.info("✅ Конфигурация проверена")
     except ValueError as e:
         logger.error(f"❌ Ошибка конфигурации: {e}")
@@ -42,19 +42,19 @@ async def main():
     logger.info("\n🔧 Инициализация RAG для Агента #1 (НТД)...")
     try:
         rag_ntd = RAGEngine(
-            api_key=Config.get_api_key(),
-            pinecone_api_key=Config.PINECONE_API_KEY,
-            index_name=Config.PINECONE_INDEX,
+            api_key=config.get_api_key(),
+            pinecone_api_key=config.PINECONE_API_KEY,
+            index_name=config.PINECONE_INDEX,
             agent_type='ntd',
-            embedding_model=Config.EMBEDDING_MODEL,
-            embedding_dimension=Config.EMBEDDING_DIMENSION,
-            top_k=Config.TOP_K_RESULTS,
-            base_url=Config.get_base_url(),
-            ai_provider=Config.AI_PROVIDER,
-            voyage_api_key=Config.VOYAGE_API_KEY,
-            embedding_provider=Config.EMBEDDING_PROVIDER
+            embedding_model=config.EMBEDDING_MODEL,
+            embedding_dimension=config.EMBEDDING_DIMENSION,
+            top_k=config.TOP_K_RESULTS,
+            base_url=config.get_base_url(),
+            ai_provider=config.AI_PROVIDER,
+            voyage_api_key=config.VOYAGE_API_KEY,
+            embedding_provider=config.EMBEDDING_PROVIDER
         )
-        logger.info(f"✅ RAG для НТД готов (embeddings: {Config.EMBEDDING_PROVIDER})")
+        logger.info(f"✅ RAG для НТД готов (embeddings: {config.EMBEDDING_PROVIDER})")
     except Exception as e:
         logger.error(f"❌ Ошибка инициализации RAG НТД: {e}")
         rag_ntd = None
@@ -63,19 +63,19 @@ async def main():
     logger.info("\n🔧 Инициализация RAG для Агента #2 (Договоры)...")
     try:
         rag_docs = RAGEngine(
-            api_key=Config.get_api_key(),
-            pinecone_api_key=Config.PINECONE_API_KEY,
-            index_name=Config.PINECONE_INDEX,
+            api_key=config.get_api_key(),
+            pinecone_api_key=config.PINECONE_API_KEY,
+            index_name=config.PINECONE_INDEX,
             agent_type='docs',
-            embedding_model=Config.EMBEDDING_MODEL,
-            embedding_dimension=Config.EMBEDDING_DIMENSION,
-            top_k=Config.TOP_K_RESULTS,
-            base_url=Config.get_base_url(),
-            ai_provider=Config.AI_PROVIDER,
-            voyage_api_key=Config.VOYAGE_API_KEY,
-            embedding_provider=Config.EMBEDDING_PROVIDER
+            embedding_model=config.EMBEDDING_MODEL,
+            embedding_dimension=config.EMBEDDING_DIMENSION,
+            top_k=config.TOP_K_RESULTS,
+            base_url=config.get_base_url(),
+            ai_provider=config.AI_PROVIDER,
+            voyage_api_key=config.VOYAGE_API_KEY,
+            embedding_provider=config.EMBEDDING_PROVIDER
         )
-        logger.info(f"✅ RAG для Договоров готов (embeddings: {Config.EMBEDDING_PROVIDER})")
+        logger.info(f"✅ RAG для Договоров готов (embeddings: {config.EMBEDDING_PROVIDER})")
     except Exception as e:
         logger.error(f"❌ Ошибка инициализации RAG Договоры: {e}")
         rag_docs = None
@@ -84,14 +84,14 @@ async def main():
     logger.info("\n🤖 Создание Telegram ботов...")
     
     bot_ntd = TelegramAgent(
-        bot_token=Config.TELEGRAM_BOT_TOKEN_NTD,
+        bot_token=config.TELEGRAM_BOT_TOKEN_NTD,
         rag_engine=rag_ntd,
         agent_name="Агент НТД"
     )
     logger.info("✅ Бот НТД создан")
     
     bot_docs = TelegramAgent(
-        bot_token=Config.TELEGRAM_BOT_TOKEN_DOCS,
+        bot_token=config.TELEGRAM_BOT_TOKEN_DOCS,
         rag_engine=rag_docs,
         agent_name="Агент Договоры"
     )

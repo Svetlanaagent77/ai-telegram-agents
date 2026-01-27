@@ -13,7 +13,7 @@ import uvicorn
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from backend.config import Config
+from backend.config import config
 from backend.utils.document_processor import DocumentProcessor
 from backend.rag.rag_engine import RAGEngine
 
@@ -33,12 +33,12 @@ def init_rag_engines():
     """Инициализация RAG систем"""
     try:
         rag_engines['ntd'] = RAGEngine(
-            api_key=Config.get_api_key(),
-            pinecone_api_key=Config.PINECONE_API_KEY,
-            index_name=Config.PINECONE_INDEX,  # Единый индекс
+            api_key=config.get_api_key(),
+            pinecone_api_key=config.PINECONE_API_KEY,
+            index_name=config.PINECONE_INDEX,  # Единый индекс
             agent_type='ntd',  # Фильтр для НТД
-            base_url=Config.get_base_url(),
-            ai_provider=Config.AI_PROVIDER
+            base_url=config.get_base_url(),
+            ai_provider=config.AI_PROVIDER
         )
         logger.info("✅ RAG НТД инициализирован")
     except Exception as e:
@@ -46,12 +46,12 @@ def init_rag_engines():
     
     try:
         rag_engines['docs'] = RAGEngine(
-            api_key=Config.get_api_key(),
-            pinecone_api_key=Config.PINECONE_API_KEY,
-            index_name=Config.PINECONE_INDEX,  # Единый индекс
+            api_key=config.get_api_key(),
+            pinecone_api_key=config.PINECONE_API_KEY,
+            index_name=config.PINECONE_INDEX,  # Единый индекс
             agent_type='docs',  # Фильтр для Договоры
-            base_url=Config.get_base_url(),
-            ai_provider=Config.AI_PROVIDER
+            base_url=config.get_base_url(),
+            ai_provider=config.AI_PROVIDER
         )
         logger.info("✅ RAG Договоры инициализирован")
     except Exception as e:
@@ -573,8 +573,8 @@ async def upload_documents(
     
     try:
         processor = DocumentProcessor(
-            chunk_size=Config.CHUNK_SIZE,
-            chunk_overlap=Config.CHUNK_OVERLAP
+            chunk_size=config.CHUNK_SIZE,
+            chunk_overlap=config.CHUNK_OVERLAP
         )
         
         total_chunks = 0

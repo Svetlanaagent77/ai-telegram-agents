@@ -9,7 +9,7 @@ from pathlib import Path
 # Добавляем путь к проекту
 sys.path.insert(0, str(Path(__file__).parent))
 
-from backend.config import Config
+from backend.config import config
 from dotenv import load_dotenv
 
 # Цвета для терминала

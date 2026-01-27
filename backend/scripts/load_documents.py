@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.pdf_processor import PDFProcessor
 from utils.docx_processor import DOCXProcessor
 from rag.rag_engine import RAGEngine
-from config import Config
+from config import config
 
 
 class DocumentLoader:
@@ -28,27 +28,27 @@ class DocumentLoader:
         
         # Выбираем индекс в зависимости от типа агента
         if agent_type == 'ntd':
-            self.index_name = Config.PINECONE_INDEX_NTD
+            self.index_name = config.PINECONE_INDEX_NTD
         elif agent_type == 'docs':
-            self.index_name = Config.PINECONE_INDEX_DOCS
+            self.index_name = config.PINECONE_INDEX_DOCS
         else:
             raise ValueError(f"Неизвестный тип агента: {agent_type}")
         
         # Инициализируем RAG engine
         self.rag = RAGEngine(
-            ai_provider=Config.AI_PROVIDER,
-            model=Config.AI_MODEL
+            ai_provider=config.AI_PROVIDER,
+            model=config.AI_MODEL
         )
         
         # Подключаем Pinecone
         self.rag.initialize_pinecone(
-            api_key=Config.PINECONE_API_KEY,
-            environment=Config.PINECONE_ENVIRONMENT,
+            api_key=config.PINECONE_API_KEY,
+            environment=config.PINECONE_ENVIRONMENT,
             index_name=self.index_name
         )
         
         # Подключаем embeddings
-        self.rag.initialize_embeddings(api_key=Config.OPENAI_API_KEY)
+        self.rag.initialize_embeddings(api_key=config.OPENAI_API_KEY)
         
         print(f"✓ DocumentLoader инициализирован для агента '{agent_type}'")
     
@@ -73,14 +73,14 @@ class DocumentLoader:
         if file_ext == '.pdf':
             result = self.pdf_processor.process_document(
                 file_path,
-                chunk_size=Config.CHUNK_SIZE,
-                overlap=Config.CHUNK_OVERLAP
+                chunk_size=config.CHUNK_SIZE,
+                overlap=config.CHUNK_OVERLAP
             )
         elif file_ext == '.docx':
             result = self.docx_processor.process_document(
                 file_path,
-                chunk_size=Config.CHUNK_SIZE,
-                overlap=Config.CHUNK_OVERLAP
+                chunk_size=config.CHUNK_SIZE,
+                overlap=config.CHUNK_OVERLAP
             )
         else:
             raise ValueError(f"Неподдерживаемый формат файла: {file_ext}")
@@ -200,7 +200,7 @@ def main():
     
     # Валидация конфигурации
     try:
-        Config.validate()
+        config.validate()
     except ValueError as e:
         print(f"❌ Ошибка конфигурации: {e}")
         return

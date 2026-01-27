@@ -8,7 +8,7 @@ from typing import List
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from backend.config import Config
+from backend.config import config
 from backend.utils.document_processor import DocumentProcessor
 from backend.rag.rag_engine import RAGEngine
 
@@ -27,25 +27,25 @@ class DocumentUploader:
         self.agent_type = agent_type
         
         # Используем единый индекс для обоих агентов
-        index_name = Config.PINECONE_INDEX
+        index_name = config.PINECONE_INDEX
         
         # Инициализация компонентов
         self.processor = DocumentProcessor(
-            chunk_size=Config.CHUNK_SIZE,
-            chunk_overlap=Config.CHUNK_OVERLAP
+            chunk_size=config.CHUNK_SIZE,
+            chunk_overlap=config.CHUNK_OVERLAP
         )
         
         self.rag = RAGEngine(
-            api_key=Config.get_api_key(),
-            pinecone_api_key=Config.PINECONE_API_KEY,
+            api_key=config.get_api_key(),
+            pinecone_api_key=config.PINECONE_API_KEY,
             index_name=index_name,
             agent_type=agent_type,
-            embedding_model=Config.EMBEDDING_MODEL,
-            embedding_dimension=Config.EMBEDDING_DIMENSION,
-            base_url=Config.get_base_url(),
-            ai_provider=Config.AI_PROVIDER,
-            voyage_api_key=Config.VOYAGE_API_KEY,
-            embedding_provider=Config.EMBEDDING_PROVIDER
+            embedding_model=config.EMBEDDING_MODEL,
+            embedding_dimension=config.EMBEDDING_DIMENSION,
+            base_url=config.get_base_url(),
+            ai_provider=config.AI_PROVIDER,
+            voyage_api_key=config.VOYAGE_API_KEY,
+            embedding_provider=config.EMBEDDING_PROVIDER
         )
     
     def upload_file(self, file_path: str):
@@ -167,7 +167,7 @@ def main():
     
     # Проверка конфигурации
     try:
-        Config.validate()
+        config.validate()
     except ValueError as e:
         logger.error(f"❌ Ошибка конфигурации: {e}")
         return

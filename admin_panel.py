@@ -35,25 +35,33 @@ def init_rag_engines():
         rag_engines['ntd'] = RAGEngine(
             api_key=config.get_api_key(),
             pinecone_api_key=config.PINECONE_API_KEY,
-            index_name=config.PINECONE_INDEX,  # Единый индекс
-            agent_type='ntd',  # Фильтр для НТД
+            index_name=config.PINECONE_INDEX,
+            agent_type='ntd',
+            embedding_model=config.EMBEDDING_MODEL,
+            embedding_dimension=config.EMBEDDING_DIMENSION,
             base_url=config.get_base_url(),
-            ai_provider=config.AI_PROVIDER
+            ai_provider=config.AI_PROVIDER,
+            voyage_api_key=config.VOYAGE_API_KEY,
+            embedding_provider=config.EMBEDDING_PROVIDER
         )
-        logger.info("✅ RAG НТД инициализирован")
+        logger.info(f"✅ RAG НТД инициализирован (embeddings: {config.EMBEDDING_PROVIDER})")
     except Exception as e:
         logger.error(f"❌ Ошибка RAG НТД: {e}")
-    
+
     try:
         rag_engines['docs'] = RAGEngine(
             api_key=config.get_api_key(),
             pinecone_api_key=config.PINECONE_API_KEY,
-            index_name=config.PINECONE_INDEX,  # Единый индекс
-            agent_type='docs',  # Фильтр для Договоры
+            index_name=config.PINECONE_INDEX,
+            agent_type='docs',
+            embedding_model=config.EMBEDDING_MODEL,
+            embedding_dimension=config.EMBEDDING_DIMENSION,
             base_url=config.get_base_url(),
-            ai_provider=config.AI_PROVIDER
+            ai_provider=config.AI_PROVIDER,
+            voyage_api_key=config.VOYAGE_API_KEY,
+            embedding_provider=config.EMBEDDING_PROVIDER
         )
-        logger.info("✅ RAG Договоры инициализирован")
+        logger.info(f"✅ RAG Договоры инициализирован (embeddings: {config.EMBEDDING_PROVIDER})")
     except Exception as e:
         logger.error(f"❌ Ошибка RAG Договоры: {e}")
 

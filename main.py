@@ -3,6 +3,7 @@ Main - точка входа для запуска AI Telegram Agents
 """
 import asyncio
 import logging
+import os
 from pathlib import Path
 import sys
 
@@ -22,7 +23,19 @@ logger = logging.getLogger(__name__)
 
 async def main():
     """Главная функция запуска системы"""
-    
+
+    # Отладочный вывод переменных окружения
+    print("\n" + "="*60)
+    print("DEBUG: Переменные окружения")
+    print("="*60)
+    prefixes = ("TELEGRAM", "DEEPSEEK", "VOYAGE", "PINECONE")
+    for key, value in sorted(os.environ.items()):
+        if key.startswith(prefixes):
+            # Маскируем значения для безопасности
+            masked = value[:8] + "..." + value[-4:] if len(value) > 16 else value[:4] + "..."
+            print(f"{key}={masked}")
+    print("="*60 + "\n")
+
     logger.info("="*60)
     logger.info("AI Telegram Agents - Запуск системы")
     logger.info("="*60)

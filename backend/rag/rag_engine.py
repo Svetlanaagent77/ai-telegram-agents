@@ -292,7 +292,8 @@ class RAGEngine:
         for doc in documents:
             # Создаём эмбеддинг
             embedding = self.create_embedding(doc['text'], is_query=False)
-            
+            time.sleep(1.5)
+
             # Подготавливаем вектор
             vectors.append({
                 'id': doc['id'],

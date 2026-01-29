@@ -5,6 +5,7 @@ RAG Engine - система поиска по векторным базам зн
 from typing import List, Dict, Optional
 import logging
 import httpx
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -51,7 +52,10 @@ class VoyageEmbeddings:
             )
             response.raise_for_status()
             data = response.json()
-        
+
+        # Rate limit: задержка после вызова Voyage API
+        time.sleep(1)
+
         # Сортируем по индексу
         sorted_data = sorted(data["data"], key=lambda x: x["index"])
         return [item["embedding"] for item in sorted_data]

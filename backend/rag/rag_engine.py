@@ -21,7 +21,7 @@ class VoyageEmbeddings:
     ):
         self.api_key = api_key
         self.model = model
-        self.base_url = "https://api.voyageai.com/v1"
+        self.base_url = "https://api.voyageai.com/v1"  # ✅ ИСПРАВЛЕНО: убраны пробелы в конце!
     
     def embed(self, text: str, input_type: str = "document") -> List[float]:
         """Получить эмбеддинг для одного текста"""
@@ -291,8 +291,9 @@ class RAGEngine:
         # Получаем все эмбеддинги ОДНИМ запросом (батч)
         logger.info(f"📊 Создание эмбеддингов для {len(texts)} чанков одним запросом...")
         
-        if self.embedding_provider == "voyage" and self.voyage_embeddings:
-            embeddings = self.voyage_embeddings.embed_batch(texts, input_type="document")
+        # ✅ ИСПРАВЛЕНО: было self.voyage_embeddings → стало self.voyage_client
+        if self.embedding_provider == "voyage" and self.voyage_client:
+            embeddings = self.voyage_client.embed_batch(texts, input_type="document")
         else:
             # Fallback - по одному (для OpenAI)
             embeddings = []

@@ -110,7 +110,7 @@ class TelegramAgent:
             except Exception as e:
                 logger.error(f"{self.agent_name} - Ошибка: {e}")
                 await message.answer("❌ Произошла ошибка при обработке запроса.")
-                )
+        
     
     async def start(self):
         """Запуск бота"""

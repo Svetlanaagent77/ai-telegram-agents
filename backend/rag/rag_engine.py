@@ -6,9 +6,14 @@ from typing import List, Dict, Optional
 import logging
 import httpx
 import time
+import re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+    def sanitize_id(id_str: str) -> str:
+    """Удаляет не-ASCII символы из ID"""
+        return re.sub(r'[^\x00-\x7F]+', '', id_str)
 
 
 class VoyageEmbeddings:
@@ -306,7 +311,7 @@ class RAGEngine:
         vectors = []
         for i, doc in enumerate(documents):
             vectors.append({
-                'id': doc['id'],
+                'id': sanitize_id(doc['id'] + f'_chunk_{i}'),
                 'values': embeddings[i],
                 'metadata': {
                     'text': doc['text'][:8000],  # Лимит Pinecone

@@ -1,5 +1,5 @@
 """
-Главный файл для запуска AI Telegram Agents
+Главный файл для запуска AI Telegram Agent (один бот на сервис)
 """
 import asyncio
 import logging
@@ -10,129 +10,88 @@ from pathlib import Path
 # Добавляем путь к backend
 sys.path.append(str(Path(__file__).parent))
 
-from config import config
-from bot.telegram_bot import TelegramAIBot
-from rag.rag_engine import RAGEngine
+from backend.bot.telegram_agent import TelegramAgent
+from backend.rag.rag_engine import RAGEngine
 
 
 def setup_logging():
     """Настройка логирования"""
     logging.basicConfig(
-        level=logging.INFO if not config.DEBUG else logging.DEBUG,
+        level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler('app.log')
-        ]
+        handlers=[logging.StreamHandler(sys.stdout)]
     )
 
 
 async def main():
-    """Основная функция"""
+    """Основная функция для одного бота"""
     
     print("""
     ╔═══════════════════════════════════════════════╗
-    ║   AI TELEGRAM AGENTS - RAG SYSTEM            ║
-    ║   Версия 1.0                                  ║
+    ║   AI TELEGRAM AGENT - RAG SYSTEM              ║
+    ║   Версия 2.0 (Single Bot)                     ║
     ╚═══════════════════════════════════════════════╝
     """)
     
-    # Настройка логирования
     setup_logging()
     logger = logging.getLogger(__name__)
     
-    # Валидация конфигурации
-    try:
-        config.validate()
-        logger.info("✓ Конфигурация проверена")
-    except ValueError as e:
-        logger.error(f"❌ Ошибка конфигурации: {e}")
-        logger.error("\nПроверьте файл .env и убедитесь, что все обязательные переменные заданы:")
-        logger.error("  - TELEGRAM_BOT_TOKEN_NTD")
-        logger.error("  - TELEGRAM_BOT_TOKEN_DOCS")
-        logger.error("  - PINECONE_API_KEY")
-        logger.error("  - OPENAI_API_KEY или ANTHROPIC_API_KEY")
+    # Получаем обязательные переменные
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    agent_type = os.getenv("AGENT_TYPE")  # "ntd" или "docs"
+    
+    if not bot_token:
+        logger.error("❌ Отсутствует TELEGRAM_BOT_TOKEN")
         return
     
-    logger.info(f"AI Provider: {config.AI_PROVIDER}")
-    logger.info(f"Model: {config.AI_MODEL}")
-    logger.info(f"Pinecone Index НТД: {config.PINECONE_INDEX_NTD}")
-    logger.info(f"Pinecone Index Договоры: {config.PINECONE_INDEX_DOCS}")
+    if not agent_type:
+        logger.error("❌ Отсутствует AGENT_TYPE (ntd/docs)")
+        return
     
-    # Создаем RAG engines для обоих агентов
-    logger.info("\n📦 Инициализация RAG engines...")
+    # Настройки из переменных окружения
+    pinecone_api_key = os.getenv("PINECONE_API_KEY")
+    voyage_api_key = os.getenv("VOYAGE_API_KEY")
+    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+    index_name = os.getenv("PINECONE_INDEX_NAME", "sveta-agent")
+    
+    # Валидация
+    if not all([pinecone_api_key, voyage_api_key, deepseek_api_key]):
+        logger.error("❌ Отсутствуют обязательные API ключи")
+        return
+    
+    logger.info(f"🤖 Запуск бота для agent_type: {agent_type}")
     
     try:
-        # RAG для НТД
-        rag_ntd = RAGEngine(
-            ai_provider=config.AI_PROVIDER,
-            model=config.AI_MODEL
+        # Инициализация RAG Engine
+        rag_engine = RAGEngine(
+            api_key=deepseek_api_key,
+            pinecone_api_key=pinecone_api_key,
+            index_name=index_name,
+            agent_type=agent_type,
+            voyage_api_key=voyage_api_key,
+            embedding_provider="voyage"
         )
-        rag_ntd.initialize_pinecone(
-            api_key=config.PINECONE_API_KEY,
-            environment=config.PINECONE_ENVIRONMENT,
-            index_name=config.PINECONE_INDEX_NTD
-        )
-        rag_ntd.initialize_embeddings(api_key=config.OPENAI_API_KEY)
+        rag_engine.init_index()
+        logger.info("✅ RAG Engine инициализирован")
         
-        # RAG для Договоров
-        rag_docs = RAGEngine(
-            ai_provider=config.AI_PROVIDER,
-            model=config.AI_MODEL
+        # Создание и запуск бота
+        agent_name = "Агент НТД" if agent_type == "ntd" else "Агент Договоры"
+        telegram_agent = TelegramAgent(
+            bot_token=bot_token,
+            rag_engine=rag_engine,
+            agent_name=agent_name
         )
-        rag_docs.initialize_pinecone(
-            api_key=config.PINECONE_API_KEY,
-            environment=config.PINECONE_ENVIRONMENT,
-            index_name=config.PINECONE_INDEX_DOCS
-        )
-        rag_docs.initialize_embeddings(api_key=config.OPENAI_API_KEY)
         
-        logger.info("✓ RAG engines инициализированы")
-    
+        logger.info(f"🚀 Запуск {agent_name}...")
+        await telegram_agent.start()
+        
     except Exception as e:
-        logger.error(f"❌ Ошибка инициализации RAG: {e}")
-        return
-    
-    # Создаем Telegram ботов
-    logger.info("\n🤖 Создание Telegram ботов...")
-    
-    try:
-        bot_ntd = TelegramAIBot(
-            token=config.TELEGRAM_BOT_TOKEN_NTD,
-            agent_name="НТД",
-            rag_engine=rag_ntd
-        )
-        
-        bot_docs = TelegramAIBot(
-            token=config.TELEGRAM_BOT_TOKEN_DOCS,
-            agent_name="Договоры",
-            rag_engine=rag_docs
-        )
-        
-        logger.info("✓ Telegram боты созданы")
-    
-    except Exception as e:
-        logger.error(f"❌ Ошибка создания ботов: {e}")
-        return
-    
-    # Запускаем оба бота одновременно
-    logger.info("\n🚀 Запуск ботов...\n")
-    logger.info("Боты запущены! Нажмите Ctrl+C для остановки.\n")
-    
-    try:
-        await asyncio.gather(
-            bot_ntd.start(),
-            bot_docs.start()
-        )
-    except KeyboardInterrupt:
-        logger.info("\n\n🛑 Получен сигнал остановки...")
-        await bot_ntd.stop()
-        await bot_docs.stop()
-        logger.info("✓ Боты остановлены")
+        logger.error(f"❌ Критическая ошибка: {e}")
+        raise
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n👋 До свидания!")
+        print("\n👋 Бот остановлен")

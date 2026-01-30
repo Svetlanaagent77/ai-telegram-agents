@@ -45,6 +45,7 @@ class VoyageEmbeddings:
         }
         
         with httpx.Client(timeout=60.0) as client:
+            time.sleep(2)
             response = client.post(
                 f"{self.base_url}/embeddings",
                 headers=headers,

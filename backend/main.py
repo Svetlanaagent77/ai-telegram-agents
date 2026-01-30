@@ -1,42 +1,28 @@
+cat > main.py << 'EOF'
 """
-Главный файл для запуска AI Telegram Agent (один бот на сервис)
+Main - точка входа для запуска AI Telegram Agent (один бот)
 """
 import asyncio
 import logging
-import sys
 import os
 from pathlib import Path
+import sys
 
-# Добавляем путь к backend
-sys.path.append(str(Path(__file__).parent))
+# Добавляем путь к проекту
+sys.path.insert(0, str(Path(__file__).parent))
 
-from backend.bot.telegram_agent import TelegramAgent
 from backend.rag.rag_engine import RAGEngine
+from backend.bot.telegram_agent import TelegramAgent
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
-def setup_logging():
-    """Настройка логирования"""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[logging.StreamHandler(sys.stdout)]
-    )
-
+logger = logging.getLogger(__name__)
 
 async def main():
-    """Основная функция для одного бота"""
-    
-    print("""
-    ╔═══════════════════════════════════════════════╗
-    ║   AI TELEGRAM AGENT - RAG SYSTEM              ║
-    ║   Версия 2.0 (Single Bot)                     ║
-    ╚═══════════════════════════════════════════════╝
-    """)
-    
-    setup_logging()
-    logger = logging.getLogger(__name__)
-    
-    # Получаем обязательные переменные
+    # Проверяем обязательные переменные
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     agent_type = os.getenv("AGENT_TYPE")  # "ntd" или "docs"
     
@@ -45,53 +31,37 @@ async def main():
         return
     
     if not agent_type:
-        logger.error("❌ Отсутствует AGENT_TYPE (ntd/docs)")
+        logger.error("❌ Отсутствует AGENT_TYPE")
         return
     
-    # Настройки из переменных окружения
+    # Получаем API ключи
     pinecone_api_key = os.getenv("PINECONE_API_KEY")
     voyage_api_key = os.getenv("VOYAGE_API_KEY")
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-    index_name = os.getenv("PINECONE_INDEX_NAME", "sveta-agent")
     
-    # Валидация
     if not all([pinecone_api_key, voyage_api_key, deepseek_api_key]):
-        logger.error("❌ Отсутствуют обязательные API ключи")
+        logger.error("❌ Отсутствуют API ключи")
         return
     
-    logger.info(f"🤖 Запуск бота для agent_type: {agent_type}")
+    # Инициализируем RAG
+    rag_engine = RAGEngine(
+        api_key=deepseek_api_key,
+        pinecone_api_key=pinecone_api_key,
+        index_name="sveta-agent",
+        agent_type=agent_type,
+        voyage_api_key=voyage_api_key,
+        embedding_provider="voyage"
+    )
+    rag_engine.init_index()
     
-    try:
-        # Инициализация RAG Engine
-        rag_engine = RAGEngine(
-            api_key=deepseek_api_key,
-            pinecone_api_key=pinecone_api_key,
-            index_name=index_name,
-            agent_type=agent_type,
-            voyage_api_key=voyage_api_key,
-            embedding_provider="voyage"
-        )
-        rag_engine.init_index()
-        logger.info("✅ RAG Engine инициализирован")
-        
-        # Создание и запуск бота
-        agent_name = "Агент НТД" if agent_type == "ntd" else "Агент Договоры"
-        telegram_agent = TelegramAgent(
-            bot_token=bot_token,
-            rag_engine=rag_engine,
-            agent_name=agent_name
-        )
-        
-        logger.info(f"🚀 Запуск {agent_name}...")
-        await telegram_agent.start()
-        
-    except Exception as e:
-        logger.error(f"❌ Критическая ошибка: {e}")
-        raise
-
+    # Запускаем бота
+    agent_name = "Агент НТД" if agent_type == "ntd" else "Агент Договоры"
+    bot = TelegramAgent(bot_token, rag_engine, agent_name)
+    await bot.start()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n👋 Бот остановлен")
+        logger.info("Бот остановлен")
+EOF

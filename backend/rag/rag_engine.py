@@ -11,7 +11,6 @@ import re
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-    def sanitize_id(id_str: str) -> str:
     """Удаляет не-ASCII символы из ID"""
         return re.sub(r'[^\x00-\x7F]+', '', id_str)
 

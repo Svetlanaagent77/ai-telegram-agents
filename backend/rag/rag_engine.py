@@ -11,10 +11,6 @@ import re
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-    """Удаляет не-ASCII символы из ID"""
-        return re.sub(r'[^\x00-\x7F]+', '', id_str)
-
-
 class VoyageEmbeddings:
     """Клиент для Voyage AI Embeddings"""
     
@@ -310,10 +306,10 @@ class RAGEngine:
         vectors = []
         for i, doc in enumerate(documents):
             vectors.append({
-                'id': sanitize_id(doc['id'] + f'_chunk_{i}'),
+                'id': re.sub(r'[^\x00-\x7F]', '', doc['id'] + f'_chunk_{i}'),
                 'values': embeddings[i],
                 'metadata': {
-                    'text': doc['text'][:8000],  # Лимит Pinecone
+                    'text': doc['text'][:8000],
                     **doc.get('metadata', {})
                 }
             })

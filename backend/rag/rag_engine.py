@@ -45,7 +45,6 @@ class VoyageEmbeddings:
         }
         
         with httpx.Client(timeout=60.0) as client:
-            time.sleep(2)
             response = client.post(
                 f"{self.base_url}/embeddings",
                 headers=headers,
@@ -53,10 +52,7 @@ class VoyageEmbeddings:
             )
             response.raise_for_status()
             data = response.json()
-
-        # Rate limit: задержка после вызова Voyage API
-        time.sleep(1)
-
+        
         # Сортируем по индексу
         sorted_data = sorted(data["data"], key=lambda x: x["index"])
         return [item["embedding"] for item in sorted_data]
@@ -276,6 +272,7 @@ class RAGEngine:
     def add_documents(self, documents: List[Dict], batch_size: int = 100):
         """
         Добавление документов в векторную базу
+        Использует батчинг эмбеддингов для обхода rate limit
         
         Args:
             documents: список документов [{id, text, metadata}, ...]
@@ -288,33 +285,39 @@ class RAGEngine:
             pc = Pinecone(api_key=self.pinecone_api_key)
             self.index = pc.Index(self.index_name)
         
-        vectors = []
+        # Собираем все тексты для батч-эмбеддинга
+        texts = [doc['text'] for doc in documents]
         
-        for doc in documents:
-            # Создаём эмбеддинг
-            embedding = self.create_embedding(doc['text'], is_query=False)
-            time.sleep(3)
-
-            # Подготавливаем вектор
+        # Получаем все эмбеддинги ОДНИМ запросом (батч)
+        logger.info(f"📊 Создание эмбеддингов для {len(texts)} чанков одним запросом...")
+        
+        if self.embedding_provider == "voyage" and self.voyage_embeddings:
+            embeddings = self.voyage_embeddings.embed_batch(texts, input_type="document")
+        else:
+            # Fallback - по одному (для OpenAI)
+            embeddings = []
+            for text in texts:
+                emb = self.create_embedding(text, is_query=False)
+                embeddings.append(emb)
+                time.sleep(0.5)
+        
+        # Формируем векторы
+        vectors = []
+        for i, doc in enumerate(documents):
             vectors.append({
                 'id': doc['id'],
-                'values': embedding,
+                'values': embeddings[i],
                 'metadata': {
                     'text': doc['text'][:8000],  # Лимит Pinecone
                     **doc.get('metadata', {})
                 }
             })
-            
-            # Загружаем батчами
-            if len(vectors) >= batch_size:
-                self.index.upsert(vectors=vectors)
-                logger.info(f"📤 Загружено {len(vectors)} векторов")
-                vectors = []
         
-        # Загружаем оставшиеся
-        if vectors:
-            self.index.upsert(vectors=vectors)
-            logger.info(f"📤 Загружено {len(vectors)} векторов")
+        # Загружаем в Pinecone батчами
+        for i in range(0, len(vectors), batch_size):
+            batch = vectors[i:i+batch_size]
+            self.index.upsert(vectors=batch)
+            logger.info(f"📤 Загружено {len(batch)} векторов")
         
         logger.info(f"✅ Всего добавлено {len(documents)} документов")
 

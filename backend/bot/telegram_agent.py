@@ -71,7 +71,7 @@ class TelegramAgent:
         async def handle_question(message: Message):
             """Обработчик текстовых вопросов"""
             user_question = message.text
-            
+    
             logger.info(f"{self.agent_name} - Получен вопрос от {message.from_user.id}: {user_question}")
             
             # Отправляем "печатает..."
@@ -81,35 +81,35 @@ class TelegramAgent:
             )
             
             try:
-                # Поиск в базе знаний
                 if self.rag_engine:
-                    # Используем RAG для поиска и генерации
-                    result = self.rag_engine.query(user_question)
+                    # Поиск релевантных документов
+                    documents = self.rag_engine.search(user_question)
+            
+                    if documents:
+                        # Генерация ответа на основе найденных документов
+                        answer_text = self.rag_engine.generate_answer(
+                            query=user_question,
+                            context_documents=documents
+                        )
+                        response = f"{answer_text}\n\n"
                     
-                    answer = result.get('answer', 'Не удалось найти информацию')
-                    sources = result.get('sources', [])
-                    
-                    # Формируем ответ с источниками
-                    response = f"{answer}\n\n"
-                    
-                    if sources:
+                    # Добавляем источники
                         response += "📄 Источники:\n"
-                        for i, source in enumerate(sources, 1):
-                            score = source.get('score', 0)
-                            doc_info = source.get('metadata', {})
-                            filename = doc_info.get('filename', f'Документ {i}')
+                        for i, doc in enumerate(documents, 1):
+                            score = doc.get('score', 0)
+                            filename = doc.get('metadata', {}).get('filename', f'Документ {i}')
                             response += f"{i}. {filename} (релевантность: {score:.2%})\n"
+                    else:
+                        response = "❌ Не удалось найти информацию по вашему запросу."
                 else:
-                    # Fallback без RAG
-                    response = "⚠️ Система поиска временно недоступна. Попробуйте позже."
-                
+                    response = "⚠️ Система поиска временно недоступна."
+        
                 await message.answer(response)
                 logger.info(f"{self.agent_name} - Ответ отправлен")
-            
+                
             except Exception as e:
                 logger.error(f"{self.agent_name} - Ошибка: {e}")
-                await message.answer(
-                    "❌ Произошла ошибка при обработке запроса. Попробуйте еще раз."
+                await message.answer("❌ Произошла ошибка при обработке запроса.")
                 )
     
     async def start(self):

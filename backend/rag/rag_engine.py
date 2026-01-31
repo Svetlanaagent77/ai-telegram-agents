@@ -193,33 +193,38 @@ class RAGEngine:
             return []
     
     def delete_documents_by_filename(self, filename: str) -> bool:
-        """
-        Удаление всех чанков документа по имени файла
-    
-        Args:
-            filename: имя файла для удаления
-        
-        Returns:
-            успешность удаления
-        """
+        """Удаление всех чанков документа по имени файла"""
         if not self.index:
             logger.error("Индекс не инициализирован")
             return False
     
         try:
-            # Сначала ищем документы с таким filename
-            results = self.search(
-                query="",
+            # Получаем статистику индекса
+            stats = self.index.describe_index_stats()
+            total_vectors = stats.get('total_vector_count', 0)
+        
+            if total_vectors == 0:
+                logger.warning("Индекс пуст")
+                return True
+        
+            # Ищем документы с таким filename
+            logger.info(f"🔍 Поиск документа: {filename}")
+        
+            results = self.index.query(
+                vector=[0] * self.embedding_dimension,  # Нулевой вектор для поиска по фильтру
                 top_k=1000,
+                include_metadata=True,
                 filter={"filename": filename}
             )
         
-            if not results:
-                logger.warning(f"⚠️ Не найдено документов с filename: {filename}")
-                return True  # Считаем успехом (документы уже удалены)
+            if not results['matches']:
+                logger.warning(f"⚠️ Не найдено документов с именем: {filename}")
+                return True
         
             # Собираем все ID для удаления
-            ids_to_delete = [doc['id'] for doc in results]
+            ids_to_delete = [match['id'] for match in results['matches']]
+        
+            logger.info(f"🗑️ Найдено {len(ids_to_delete)} чанков для удаления")
         
             # Удаляем по ID
             self.index.delete(ids=ids_to_delete)

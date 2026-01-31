@@ -69,7 +69,7 @@ class RAGEngine:
         agent_type: str = None,  # 'ntd' или 'docs'
         embedding_model: str = "voyage-multilingual-2",
         embedding_dimension: int = 1024,
-        top_k: int = 5,  # ✅ УВЕЛИЧЕНО: с 3 до 5 для лучшей релевантности
+        top_k: int = 7,  # ✅ УВЕЛИЧЕНО: с 3 до 5 для лучшей релевантности
         base_url: str = None,
         ai_provider: str = "deepseek",
         voyage_api_key: str = None,
@@ -262,51 +262,54 @@ class RAGEngine:
         """
         Добавление документов в векторную базу
         Использует батчинг эмбеддингов для обхода rate limit
-        
+    
         Args:
-            documents: список документов [{id,}, ...]
+                documents: список документов [{id, text, metadata}, ...]
             batch_size: размер батча для загрузки
         """
         from pinecone import Pinecone
-        
+    
         # Инициализация Pinecone если не было
         if not self.index:
             pc = Pinecone(api_key=self.pinecone_api_key)
             self.index = pc.Index(self.index_name)
-        
+    
         # Собираем все тексты для батч-эмбеддинга
         texts = [doc['text'] for doc in documents]
-        
+    
         # Получаем все эмбеддинги ОДНИМ запросом (батч)
         logger.info(f"📊 Создание эмбеддингов для {len(texts)} чанков одним запросом...")
-        
-        # ✅ ИСПРАВЛЕНО: было self.voyage_embeddings → стало self.voyage_client
+    
         if self.embedding_provider == "voyage" and self.voyage_client:
             embeddings = self.voyage_client.embed_batch(texts, input_type="document")
         else:
-            # Если нет Voyage, выбрасываем ошибку
             logger.error("Не настроен провайдер эмбеддингов")
             raise ValueError("Не настроен провайдер эмбеддингов")
-        
+    
         # Формируем векторы
         vectors = []
         for i, doc in enumerate(documents):
+            # Копируем метаданные документа
+            metadata = doc.get('metadata', {}).copy()
+            # Добавляем обязательные поля
+            metadata['text'] = doc['text'][:8000]
+            # 🔑 КРИТИЧЕСКИ ВАЖНО: добавляем agent_type из инстанса RAGEngine
+        if self.agent_type:
+            metadata['agent_type'] = self.agent_type
+        
             vectors.append({
                 'id': re.sub(r'[^\x00-\x7F]', '', doc['id'] + f'_chunk_{i}'),
                 'values': embeddings[i],
-                'metadata': {
-                    'text': doc['text'][:8000],
-                    **doc.get('metadata', {})
-                }
-            })
-        
+                'metadata': metadata
+        })
+    
         # Загружаем в Pinecone батчами
         for i in range(0, len(vectors), batch_size):
             batch = vectors[i:i+batch_size]
             self.index.upsert(vectors=batch)
-            logger.info(f"📤 Загружено {len(batch)} векторов")
-        
-        logger.info(f"✅ Всего добавлено {len(documents)} документов")
+            logger.info(f"📤 Загружено {len(batch)} векторов (агент: {self.agent_type})")
+    
+        logger.info(f"✅ Всего добавлено {len(documents)} документов (агент: {self.agent_type})")
 
     def generate_answer(
         self,

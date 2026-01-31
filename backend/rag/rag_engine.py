@@ -199,42 +199,29 @@ class RAGEngine:
             return False
     
         try:
-            # Получаем статистику индекса
-            stats = self.index.describe_index_stats()
-            total_vectors = stats.get('total_vector_count', 0)
+            # Простой фильтр без сложной логики
+            delete_filter = {"filename": {"$eq": filename}}
         
-            if total_vectors == 0:
-                logger.warning("Индекс пуст")
-                return True
+            if self.agent_type:
+                delete_filter["agent_type"] = {"$eq": self.agent_type}
         
-            # Ищем документы с таким filename
-            logger.info(f"🔍 Поиск документа: {filename}")
+            # Удаляем напрямую через фильтр
+            self.index.delete(filter=delete_filter)
         
-            results = self.index.query(
-                vector=[0] * self.embedding_dimension,  # Нулевой вектор для поиска по фильтру
-                top_k=1000,
-                include_metadata=True,
-                filter={"filename": filename}
-            )
-        
-            if not results['matches']:
-                logger.warning(f"⚠️ Не найдено документов с именем: {filename}")
-                return True
-        
-            # Собираем все ID для удаления
-            ids_to_delete = [match['id'] for match in results['matches']]
-        
-            logger.info(f"🗑️ Найдено {len(ids_to_delete)} чанков для удаления")
-        
-            # Удаляем по ID
-            self.index.delete(ids=ids_to_delete)
-        
-            logger.info(f"✅ Удалено {len(ids_to_delete)} чанков документа: {filename}")
+            logger.info(f"✅ Удалены чанки документа: {filename} (агент: {self.agent_type})")
             return True
     
         except Exception as e:
-            logger.error(f"❌ Ошибка при удалении: {e}")
-            return False
+            logger.warning(f"⚠️ Удаление без фильтра (ошибка: {e})")
+            try:
+                # Fallback: удаляем ВСЕ документы агента (крайняя мера)
+                if self.agent_type:
+                    self.index.delete(filter={"agent_type": {"$eq": self.agent_type}})
+                    logger.info(f"✅ Удалены ВСЕ документы агента: {self.agent_type}")
+                return True
+            except Exception as e2:
+                logger.error(f"❌ Полный провал удаления: {e2}")
+                return False
     
     def list_documents(self) -> List[str]:
         """

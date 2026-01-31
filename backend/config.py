@@ -11,13 +11,13 @@ class Config:
     """Основная конфигурация - переменные читаются в runtime"""
 
     # Telegram
-    @property
-    def TELEGRAM_BOT_TOKEN_NTD(self):
-        return os.getenv("TELEGRAM_BOT_TOKEN_NTD")
+   @property
+    def TELEGRAM_BOT_TOKEN(self):
+        return os.getenv("TELEGRAM_BOT_TOKEN")
 
     @property
-    def TELEGRAM_BOT_TOKEN_DOCS(self):
-        return os.getenv("TELEGRAM_BOT_TOKEN_DOCS")
+    def AGENT_TYPE(self):
+        return os.getenv("AGENT_TYPE")
 
     # AI Provider для генерации (deepseek)
     @property
@@ -135,10 +135,12 @@ class Config:
         """Проверка обязательных параметров"""
         required = []
 
-        if not self.TELEGRAM_BOT_TOKEN_NTD:
-            required.append("TELEGRAM_BOT_TOKEN_NTD")
-        if not self.TELEGRAM_BOT_TOKEN_DOCS:
-            required.append("TELEGRAM_BOT_TOKEN_DOCS")
+        # Теперь проверяем один токен
+        if not os.getenv("TELEGRAM_BOT_TOKEN"):
+        required.append("TELEGRAM_BOT_TOKEN")
+    
+        if not os.getenv("AGENT_TYPE"):
+            required.append("AGENT_TYPE")
 
         # Проверка API ключей для генерации
         if self.AI_PROVIDER == "openai" and not self.OPENAI_API_KEY:
@@ -148,7 +150,7 @@ class Config:
         elif self.AI_PROVIDER == "deepseek" and not self.DEEPSEEK_API_KEY:
             required.append("DEEPSEEK_API_KEY")
 
-        # Проверка API ключей для эмбеддингов
+    # Проверка API ключей для эмбеддингов
         if self.EMBEDDING_PROVIDER == "voyage" and not self.VOYAGE_API_KEY:
             required.append("VOYAGE_API_KEY")
         elif self.EMBEDDING_PROVIDER == "openai" and not self.OPENAI_API_KEY:

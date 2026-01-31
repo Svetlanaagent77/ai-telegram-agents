@@ -11,7 +11,7 @@ class Config:
     """Основная конфигурация - переменные читаются в runtime"""
 
     # Telegram
-   @property
+    @property
     def TELEGRAM_BOT_TOKEN(self):
         return os.getenv("TELEGRAM_BOT_TOKEN")
 
@@ -74,7 +74,7 @@ class Config:
 
     @property
     def PINECONE_INDEX(self):
-        return os.getenv("PINECONE_INDEX", "ai-agents-knowledge-base")
+        return os.getenv("PINECONE_INDEX", "sveta1")
 
     # Database
     @property
@@ -135,11 +135,10 @@ class Config:
         """Проверка обязательных параметров"""
         required = []
 
-        # Теперь проверяем один токен
-        if not os.getenv("TELEGRAM_BOT_TOKEN"):
-        required.append("TELEGRAM_BOT_TOKEN")
-    
-        if not os.getenv("AGENT_TYPE"):
+        if not self.TELEGRAM_BOT_TOKEN:
+            required.append("TELEGRAM_BOT_TOKEN")
+        
+        if not self.AGENT_TYPE:
             required.append("AGENT_TYPE")
 
         # Проверка API ключей для генерации
@@ -150,7 +149,7 @@ class Config:
         elif self.AI_PROVIDER == "deepseek" and not self.DEEPSEEK_API_KEY:
             required.append("DEEPSEEK_API_KEY")
 
-    # Проверка API ключей для эмбеддингов
+        # Проверка API ключей для эмбеддингов
         if self.EMBEDDING_PROVIDER == "voyage" and not self.VOYAGE_API_KEY:
             required.append("VOYAGE_API_KEY")
         elif self.EMBEDDING_PROVIDER == "openai" and not self.OPENAI_API_KEY:

@@ -30,6 +30,7 @@ async def main():
         agent_type=agent_type,
         voyage_api_key=os.getenv("VOYAGE_API_KEY"),
         embedding_provider="voyage"
+        base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").strip()
     )
     rag.init_index()
     

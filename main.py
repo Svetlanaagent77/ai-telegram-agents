@@ -1,5 +1,5 @@
 """
-Main - точка входа для запуска AI Telegram Agents
+Main - точка входа для запуска AI Telegram Agent (один бот)
 """
 import asyncio
 import logging
@@ -7,120 +7,38 @@ import os
 from pathlib import Path
 import sys
 
-# Добавляем путь к проекту
 sys.path.insert(0, str(Path(__file__).parent))
 
-from backend.config import config
 from backend.rag.rag_engine import RAGEngine
 from backend.bot.telegram_agent import TelegramAgent
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 async def main():
-    """Главная функция запуска системы"""
-
-    # Отладочный вывод переменных окружения
-    print("DEBUG: Переменные окружения")
-    print(dict(os.environ))
-
-    logger.info("="*60)
-    logger.info("AI Telegram Agents - Запуск системы")
-    logger.info("="*60)
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    agent_type = os.getenv("AGENT_TYPE")
     
-    # Проверка конфигурации
-    try:
-        config.validate()
-        logger.info("✅ Конфигурация проверена")
-    except ValueError as e:
-        logger.error(f"❌ Ошибка конфигурации: {e}")
-        logger.info("\n📝 Создайте .env файл с необходимыми параметрами:")
-        logger.info("   cp .env.example .env")
-        logger.info("   nano .env")
+    if not bot_token or not agent_type:
+        logger.error("❌ Отсутствуют TELEGRAM_BOT_TOKEN или AGENT_TYPE")
         return
     
-    # Инициализация RAG для агента НТД
-    logger.info("\n🔧 Инициализация RAG для Агента #1 (НТД)...")
-    try:
-        rag_ntd = RAGEngine(
-            api_key=config.get_api_key(),
-            pinecone_api_key=config.PINECONE_API_KEY,
-            index_name=config.PINECONE_INDEX,
-            agent_type='ntd',
-            embedding_model=config.EMBEDDING_MODEL,
-            embedding_dimension=config.EMBEDDING_DIMENSION,
-            top_k=config.TOP_K_RESULTS,
-            base_url=config.get_base_url(),
-            ai_provider=config.AI_PROVIDER,
-            voyage_api_key=config.VOYAGE_API_KEY,
-            embedding_provider=config.EMBEDDING_PROVIDER
-        )
-        logger.info(f"✅ RAG для НТД готов (embeddings: {config.EMBEDDING_PROVIDER})")
-    except Exception as e:
-        logger.error(f"❌ Ошибка инициализации RAG НТД: {e}")
-        rag_ntd = None
-    
-    # Инициализация RAG для агента Договоры
-    logger.info("\n🔧 Инициализация RAG для Агента #2 (Договоры)...")
-    try:
-        rag_docs = RAGEngine(
-            api_key=config.get_api_key(),
-            pinecone_api_key=config.PINECONE_API_KEY,
-            index_name=config.PINECONE_INDEX,
-            agent_type='docs',
-            embedding_model=config.EMBEDDING_MODEL,
-            embedding_dimension=config.EMBEDDING_DIMENSION,
-            top_k=config.TOP_K_RESULTS,
-            base_url=config.get_base_url(),
-            ai_provider=config.AI_PROVIDER,
-            voyage_api_key=config.VOYAGE_API_KEY,
-            embedding_provider=config.EMBEDDING_PROVIDER
-        )
-        logger.info(f"✅ RAG для Договоров готов (embeddings: {config.EMBEDDING_PROVIDER})")
-    except Exception as e:
-        logger.error(f"❌ Ошибка инициализации RAG Договоры: {e}")
-        rag_docs = None
-    
-    # Создание ботов
-    logger.info("\n🤖 Создание Telegram ботов...")
-    
-    bot_ntd = TelegramAgent(
-        bot_token=config.TELEGRAM_BOT_TOKEN_NTD,
-        rag_engine=rag_ntd,
-        agent_name="Агент НТД"
+    rag = RAGEngine(
+        api_key=os.getenv("DEEPSEEK_API_KEY"),
+        pinecone_api_key=os.getenv("PINECONE_API_KEY"),
+        index_name=os.getenv("PINECONE_INDEX", "sveta1"),
+        agent_type=agent_type,
+        voyage_api_key=os.getenv("VOYAGE_API_KEY"),
+        embedding_provider="voyage"
     )
-    logger.info("✅ Бот НТД создан")
+    rag.init_index()
     
-    bot_docs = TelegramAgent(
-        bot_token=config.TELEGRAM_BOT_TOKEN_DOCS,
-        rag_engine=rag_docs,
-        agent_name="Агент Договоры"
-    )
-    logger.info("✅ Бот Договоры создан")
-    
-    # Запуск ботов параллельно
-    logger.info("\n🚀 Запуск ботов...")
-    logger.info("="*60)
-    
-    try:
-        await asyncio.gather(
-            bot_ntd.start(),
-            bot_docs.start()
-        )
-    except KeyboardInterrupt:
-        logger.info("\n⏹ Остановка системы...")
-    except Exception as e:
-        logger.error(f"\n❌ Ошибка при работе: {e}")
-    finally:
-        logger.info("👋 Система остановлена")
-
+    name = "Агент НТД" if agent_type == "ntd" else "Агент Договоры"
+    bot = TelegramAgent(bot_token, rag, name)
+    await bot.start()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("\n👋 До свидания!")
+        print("Бот остановлен")

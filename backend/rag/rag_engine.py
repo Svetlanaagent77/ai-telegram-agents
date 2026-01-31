@@ -69,7 +69,7 @@ class RAGEngine:
         agent_type: str = None,  # 'ntd' или 'docs'
         embedding_model: str = "voyage-multilingual-2",
         embedding_dimension: int = 1024,
-        top_k: int = 3,
+        top_k: int = 5,  # ✅ УВЕЛИЧЕНО: с 3 до 5 для лучшей релевантности
         base_url: str = None,
         ai_provider: str = "deepseek",
         voyage_api_key: str = None,
@@ -83,11 +83,11 @@ class RAGEngine:
             agent_type: тип агента для фильтрации ('ntd' или 'docs')
             embedding_model: модель для embeddings
             embedding_dimension: размерность векторов (1024 для Voyage)
-            top_k: количество результатов поиска
+            top_k: количество результатов поиска (увеличено для лучшей релевантности)
             base_url: базовый URL API (для DeepSeek)
             ai_provider: провайдер AI для генерации (deepseek)
             voyage_api_key: ключ Voyage AI для эмбеддингов
-            embedding_provider: провайдер эмбеддингов (voyage или openai)
+            embedding_provider: провайдер эмбеддингов (voyage)
         """
         self.api_key = api_key
         self.pinecone_api_key = pinecone_api_key
@@ -125,7 +125,7 @@ class RAGEngine:
         Returns:
             вектор embedding
         """
-        # Voyage AI
+        # Только Voyage AI
         if self.embedding_provider == "voyage" and self.voyage_client:
             try:
                 if is_query:
@@ -136,20 +136,9 @@ class RAGEngine:
                 logger.error(f"Ошибка Voyage AI: {e}")
                 raise
         
-        # Fallback на OpenAI
-        import openai
-        
-        if self.base_url:
-            client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url)
-        else:
-            client = openai.OpenAI(api_key=self.api_key)
-        
-        try:
-            response = client.embeddings.create(input=text, model=self.embedding_model)
-            return response.data[0].embedding
-        except Exception as e:
-            logger.error(f"Ошибка при создании embedding: {e}")
-            raise
+        # Если мы здесь, значит, что-то пошло не так
+        logger.error("Не настроен провайдер эмбеддингов")
+        raise ValueError("Не настроен провайдер эмбеддингов")
     
     def search(self, query: str, top_k: Optional[int] = None) -> List[Dict]:
         """
@@ -275,7 +264,7 @@ class RAGEngine:
         Использует батчинг эмбеддингов для обхода rate limit
         
         Args:
-            documents: список документов [{id, text, metadata}, ...]
+            documents: список документов [{id,}, ...]
             batch_size: размер батча для загрузки
         """
         from pinecone import Pinecone
@@ -295,12 +284,9 @@ class RAGEngine:
         if self.embedding_provider == "voyage" and self.voyage_client:
             embeddings = self.voyage_client.embed_batch(texts, input_type="document")
         else:
-            # Fallback - по одному (для OpenAI)
-            embeddings = []
-            for text in texts:
-                emb = self.create_embedding(text, is_query=False)
-                embeddings.append(emb)
-                time.sleep(0.5)
+            # Если нет Voyage, выбрасываем ошибку
+            logger.error("Не настроен провайдер эмбеддингов")
+            raise ValueError("Не настроен провайдер эмбеддингов")
         
         # Формируем векторы
         vectors = []
@@ -332,16 +318,10 @@ class RAGEngine:
         """
         Генерация ответа на основе найденных документов
         """
-        import openai
-        
-        # Настройка клиента
-        if self.base_url:
-            client = openai.OpenAI(
-                api_key=self.api_key,
-                base_url=self.base_url
-            )
-        else:
-            client = openai.OpenAI(api_key=self.api_key)
+        # Используем DeepSeek API через httpx
+        if not self.base_url:
+            logger.error("Base URL не настроен для DeepSeek API")
+            return "Ошибка настройки API"
         
         # Формируем контекст
         context = "\n\n".join([
@@ -362,22 +342,32 @@ class RAGEngine:
 Ответ:"""
         
         try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.3,
-                max_tokens=1000
-            )
-            
-            return response.choices[0].message.content
+            # Используем httpx для запроса к DeepSeek API
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        "temperature": 0.1,  # ✅ УМЕНЬШЕНО: для более точных ответов
+                        "max_tokens": 1000
+                    }
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                return data["choices"][0]["message"]["content"]
         
         except Exception as e:
             logger.error(f"Ошибка при генерации: {e}")
             return "Ошибка при генерации ответа."
-
 
 if __name__ == "__main__":
     print("RAG Engine модуль готов!")

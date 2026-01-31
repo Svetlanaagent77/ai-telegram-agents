@@ -26,7 +26,7 @@ async def main():
     rag = RAGEngine(
         api_key=os.getenv("DEEPSEEK_API_KEY"),
         pinecone_api_key=os.getenv("PINECONE_API_KEY"),
-        index_name="sveta-agent",
+        index_name=os.getenv("PINECONE_INDEX", "sveta1"),
         agent_type=agent_type,
         voyage_api_key=os.getenv("VOYAGE_API_KEY"),
         embedding_provider="voyage"

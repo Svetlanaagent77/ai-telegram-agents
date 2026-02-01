@@ -69,7 +69,7 @@ class RAGEngine:
         agent_type: str = None,  # 'ntd' или 'docs'
         embedding_model: str = "voyage-multilingual-2",
         embedding_dimension: int = 1024,
-        top_k: int = 7,  # ✅ УВЕЛИЧЕНО: с 3 до 5 для лучшей релевантности
+        top_k: int = 10,  # ✅ УВЕЛИЧЕНО: с 3 до 5 для лучшей релевантности
         base_url: str = None,
         ai_provider: str = "deepseek",
         voyage_api_key: str = None,

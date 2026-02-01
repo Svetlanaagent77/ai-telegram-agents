@@ -199,29 +199,23 @@ class RAGEngine:
             return False
     
         try:
-            # Простой фильтр без сложной логики
-            delete_filter = {"filename": {"$eq": filename}}
+            # Создаем фильтр для удаления
+            delete_filter = {
+                "filename": {"$eq": filename}
+            }
         
-            if self.agent_type:
-                delete_filter["agent_type"] = {"$eq": self.agent_type}
+            # Если указан тип агента, добавляем его в фильтр
+        if self.agent_type:
+            delete_filter["agent_type"] = {"$eq": self.agent_type}
         
-            # Удаляем напрямую через фильтр
+            # Удаляем документы
             self.index.delete(filter=delete_filter)
-        
             logger.info(f"✅ Удалены чанки документа: {filename} (агент: {self.agent_type})")
             return True
-    
+        
         except Exception as e:
-            logger.warning(f"⚠️ Удаление без фильтра (ошибка: {e})")
-            try:
-                # Fallback: удаляем ВСЕ документы агента (крайняя мера)
-                if self.agent_type:
-                    self.index.delete(filter={"agent_type": {"$eq": self.agent_type}})
-                    logger.info(f"✅ Удалены ВСЕ документы агента: {self.agent_type}")
-                return True
-            except Exception as e2:
-                logger.error(f"❌ Полный провал удаления: {e2}")
-                return False
+            logger.error(f"❌ Ошибка при удалении: {e}")
+            return False
     
     def list_documents(self) -> List[str]:
         """

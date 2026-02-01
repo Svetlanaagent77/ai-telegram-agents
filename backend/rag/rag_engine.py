@@ -205,8 +205,8 @@ class RAGEngine:
             }
         
             # Если указан тип агента, добавляем его в фильтр
-        if self.agent_type:
-            delete_filter["agent_type"] = {"$eq": self.agent_type}
+            if self.agent_type:
+                delete_filter["agent_type"] = {"$eq": self.agent_type}
         
             # Удаляем документы
             self.index.delete(filter=delete_filter)

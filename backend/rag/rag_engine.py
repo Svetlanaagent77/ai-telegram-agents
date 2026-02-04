@@ -21,7 +21,7 @@ class VoyageEmbeddings:
     ):
         self.api_key = api_key
         self.model = model
-        self.base_url = "https://api.voyageai.com/v1"  # ✅ ИСПРАВЛЕНО: убраны пробелы в конце!
+        self.base_url = "https://api.voyageai.com/v1"  # ✅ УБРАНЫ ПРОБЕЛЫ В КОНЦЕ!
     
     def embed(self, text: str, input_type: str = "document") -> List[float]:
         """Получить эмбеддинг для одного текста"""
@@ -32,30 +32,44 @@ class VoyageEmbeddings:
         return self.embed(text, input_type="query")
     
     def embed_batch(self, texts: List[str], input_type: str = "document") -> List[List[float]]:
-        """Получить эмбеддинги для списка текстов"""
+        """Получить эмбеддинги для списка текстов с задержкой"""
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
         
-        payload = {
-            "model": self.model,
-            "input": texts,
-            "input_type": input_type
-        }
+        # Обрабатываем по 3 текста за раз (вместо всех сразу)
+        batch_size = 3
+        all_embeddings = []
         
-        with httpx.Client(timeout=60.0) as client:
-            response = client.post(
-                f"{self.base_url}/embeddings",
-                headers=headers,
-                json=payload
-            )
-            response.raise_for_status()
-            data = response.json()
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            
+            payload = {
+                "model": self.model,
+                "input": batch,
+                "input_type": input_type
+            }
+            
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(
+                    f"{self.base_url}/embeddings",
+                    headers=headers,
+                    json=payload
+                )
+                response.raise_for_status()
+                data = response.json()
+            
+            # Сортируем по индексу
+            sorted_data = sorted(data["data"], key=lambda x: x["index"])
+            embeddings = [item["embedding"] for item in sorted_data]
+            all_embeddings.extend(embeddings)
+            
+            # Задержка между запросами (1.5 секунды для безопасности)
+            if i + batch_size < len(texts):
+                time.sleep(1.5)
         
-        # Сортируем по индексу
-        sorted_data = sorted(data["data"], key=lambda x: x["index"])
-        return [item["embedding"] for item in sorted_data]
+        return all_embeddings
 
 
 class RAGEngine:
@@ -257,30 +271,30 @@ class RAGEngine:
         """
         Добавление документов в векторную базу
         Использует батчинг эмбеддингов для обхода rate limit
-    
+
         Args:
-                documents: список документов [{id, text, metadata}, ...]
+            documents: список документов [{id, text, metadata}, ...]
             batch_size: размер батча для загрузки
         """
         from pinecone import Pinecone
-    
+
         # Инициализация Pinecone если не было
         if not self.index:
             pc = Pinecone(api_key=self.pinecone_api_key)
             self.index = pc.Index(self.index_name)
-    
+
         # Собираем все тексты для батч-эмбеддинга
         texts = [doc['text'] for doc in documents]
-    
+
         # Получаем все эмбеддинги ОДНИМ запросом (батч)
         logger.info(f"📊 Создание эмбеддингов для {len(texts)} чанков одним запросом...")
-    
+
         if self.embedding_provider == "voyage" and self.voyage_client:
             embeddings = self.voyage_client.embed_batch(texts, input_type="document")
         else:
             logger.error("Не настроен провайдер эмбеддингов")
             raise ValueError("Не настроен провайдер эмбеддингов")
-    
+
         # Формируем векторы
         vectors = []
         for i, doc in enumerate(documents):
@@ -289,21 +303,21 @@ class RAGEngine:
             # Добавляем обязательные поля
             metadata['text'] = doc['text'][:8000]
             # 🔑 КРИТИЧЕСКИ ВАЖНО: добавляем agent_type из инстанса RAGEngine
-        if self.agent_type:
-            metadata['agent_type'] = self.agent_type
-        
+            if self.agent_type:
+                metadata['agent_type'] = self.agent_type
+            
             vectors.append({
                 'id': re.sub(r'[^\x00-\x7F]', '', doc['id'] + f'_chunk_{i}'),
                 'values': embeddings[i],
                 'metadata': metadata
-        })
-    
+            })
+
         # Загружаем в Pinecone батчами
         for i in range(0, len(vectors), batch_size):
             batch = vectors[i:i+batch_size]
             self.index.upsert(vectors=batch)
             logger.info(f"📤 Загружено {len(batch)} векторов (агент: {self.agent_type})")
-    
+
         logger.info(f"✅ Всего добавлено {len(documents)} документов (агент: {self.agent_type})")
 
     def generate_answer(

@@ -3,7 +3,6 @@ Web Admin Panel - загрузка документов через браузе�
 """
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 import os
 import sys
 from pathlib import Path
@@ -13,7 +12,7 @@ import uvicorn
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from backend.config import config
+# УДАЛЕНО: from backend.config import config
 from backend.utils.document_processor import DocumentProcessor
 from backend.rag.rag_engine import RAGEngine
 
@@ -33,35 +32,35 @@ def init_rag_engines():
     """Инициализация RAG систем"""
     try:
         rag_engines['ntd'] = RAGEngine(
-            api_key=config.get_api_key(),
-            pinecone_api_key=config.PINECONE_API_KEY,
-            index_name=config.PINECONE_INDEX,
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+            pinecone_api_key=os.getenv("PINECONE_API_KEY"),
+            index_name=os.getenv("PINECONE_INDEX", "sveta1"),
             agent_type='ntd',
-            embedding_model=config.EMBEDDING_MODEL,
-            embedding_dimension=config.EMBEDDING_DIMENSION,
-            base_url=config.get_base_url(),
-            ai_provider=config.AI_PROVIDER,
-            voyage_api_key=config.VOYAGE_API_KEY,
-            embedding_provider=config.EMBEDDING_PROVIDER
+            embedding_model=os.getenv("EMBEDDING_MODEL", "voyage-multilingual-2"),
+            embedding_dimension=int(os.getenv("EMBEDDING_DIMENSION", "1024")),
+            base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").strip(),
+            ai_provider=os.getenv("AI_PROVIDER", "deepseek"),
+            voyage_api_key=os.getenv("VOYAGE_API_KEY"),
+            embedding_provider=os.getenv("EMBEDDING_PROVIDER", "voyage")
         )
-        logger.info(f"✅ RAG НТД инициализирован (embeddings: {config.EMBEDDING_PROVIDER})")
+        logger.info("✅ RAG НТД инициализирован")
     except Exception as e:
         logger.error(f"❌ Ошибка RAG НТД: {e}")
 
     try:
         rag_engines['docs'] = RAGEngine(
-            api_key=config.get_api_key(),
-            pinecone_api_key=config.PINECONE_API_KEY,
-            index_name=config.PINECONE_INDEX,
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+            pinecone_api_key=os.getenv("PINECONE_API_KEY"),
+            index_name=os.getenv("PINECONE_INDEX", "sveta1"),
             agent_type='docs',
-            embedding_model=config.EMBEDDING_MODEL,
-            embedding_dimension=config.EMBEDDING_DIMENSION,
-            base_url=config.get_base_url(),
-            ai_provider=config.AI_PROVIDER,
-            voyage_api_key=config.VOYAGE_API_KEY,
-            embedding_provider=config.EMBEDDING_PROVIDER
+            embedding_model=os.getenv("EMBEDDING_MODEL", "voyage-multilingual-2"),
+            embedding_dimension=int(os.getenv("EMBEDDING_DIMENSION", "1024")),
+            base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").strip(),
+            ai_provider=os.getenv("AI_PROVIDER", "deepseek"),
+            voyage_api_key=os.getenv("VOYAGE_API_KEY"),
+            embedding_provider=os.getenv("EMBEDDING_PROVIDER", "voyage")
         )
-        logger.info(f"✅ RAG Договоры инициализирован (embeddings: {config.EMBEDDING_PROVIDER})")
+        logger.info("✅ RAG Договоры инициализирован")
     except Exception as e:
         logger.error(f"❌ Ошибка RAG Договоры: {e}")
 
@@ -581,8 +580,8 @@ async def upload_documents(
     
     try:
         processor = DocumentProcessor(
-            chunk_size=config.CHUNK_SIZE,
-            chunk_overlap=config.CHUNK_OVERLAP
+            chunk_size=int(os.getenv("CHUNK_SIZE", "500")),
+            chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "100"))
         )
         
         total_chunks = 0

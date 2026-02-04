@@ -32,43 +32,50 @@ class VoyageEmbeddings:
         return self.embed(text, input_type="query")
     
     def embed_batch(self, texts: List[str], input_type: str = "document") -> List[List[float]]:
-        """Получить эмбеддинги для списка текстов с задержкой"""
+        """Получить эмбеддинги для списка текстов с соблюдением rate limit"""
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
-        
-        # Обрабатываем по 3 текста за раз (вместо всех сразу)
-        batch_size = 3
+    
         all_embeddings = []
-        
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
-            
+    
+        # Обрабатываем по ОДНОМУ тексту (максимально безопасно)
+        for i, text in enumerate(texts):
             payload = {
                 "model": self.model,
-                "input": batch,
+                "input": [text],  # Всегда список из одного элемента
                 "input_type": input_type
             }
-            
+        
             with httpx.Client(timeout=60.0) as client:
                 response = client.post(
                     f"{self.base_url}/embeddings",
                     headers=headers,
                     json=payload
                 )
+            
+                # Если получили 429 — ждём и повторяем
+                if response.status_code == 429:
+                    logger.warning("⚠️ Rate limit hit. Ждём 2 секунды...")
+                    time.sleep(2)
+                    # Повторяем тот же запрос
+                    response = client.post(
+                        f"{self.base_url}/embeddings",
+                        headers=headers,
+                        json=payload
+                    )
+            
                 response.raise_for_status()
                 data = response.json()
-            
-            # Сортируем по индексу
-            sorted_data = sorted(data["data"], key=lambda x: x["index"])
-            embeddings = [item["embedding"] for item in sorted_data]
-            all_embeddings.extend(embeddings)
-            
-            # Задержка между запросами (1.5 секунды для безопасности)
-            if i + batch_size < len(texts):
-                time.sleep(1.5)
         
+            embedding = data["data"][0]["embedding"]
+            all_embeddings.append(embedding)
+        
+            # Задержка между запросами (обязательно!)
+            if i < len(texts) - 1:
+                time.sleep(1.2)  # >1 секунды — чтобы уложиться в лимит
+    
         return all_embeddings
 
 

@@ -40,41 +40,52 @@ class VoyageEmbeddings:
     
         all_embeddings = []
     
-        # Обрабатываем по ОДНОМУ тексту (максимально безопасно)
         for i, text in enumerate(texts):
             payload = {
                 "model": self.model,
-                "input": [text],  # Всегда список из одного элемента
+                "input": [text],
                 "input_type": input_type
             }
         
-            with httpx.Client(timeout=60.0) as client:
-                response = client.post(
-                    f"{self.base_url}/embeddings",
-                    headers=headers,
-                    json=payload
-                )
-            
-                # Если получили 429 — ждём и повторяем
-                if response.status_code == 429:
-                    logger.warning("⚠️ Rate limit hit. Ждём 2 секунды...")
-                    time.sleep(2)
-                    # Повторяем тот же запрос
-                    response = client.post(
-                        f"{self.base_url}/embeddings",
-                        headers=headers,
-                        json=payload
-                    )
-            
-                response.raise_for_status()
-                data = response.json()
+            max_retries = 3
+            retry_delay = 2.0
         
-            embedding = data["data"][0]["embedding"]
-            all_embeddings.append(embedding)
+            for attempt in range(max_retries + 1):
+                try:
+                    with httpx.Client(timeout=60.0) as client:
+                        response = client.post(
+                            f"{self.base_url}/embeddings",
+                            headers=headers,
+                            json=payload
+                        )
+                
+                    if response.status_code == 429:
+                        if attempt < max_retries:
+                            logger.warning(f"⚠️ Rate limit hit (попытка {attempt + 1}). Ждём {retry_delay} сек...")
+                            time.sleep(retry_delay)
+                            retry_delay *= 1.5  # экспоненциальная задержка
+                            continue
+                        else:
+                            response.raise_for_status()  # выбросит исключение
+                
+                    response.raise_for_status()
+                    data = response.json()
+                    embedding = data["data"][0]["embedding"]
+                    all_embeddings.append(embedding)
+                    break  # успех — выходим из цикла попыток
+                
+                except Exception as e:
+                    if attempt < max_retries:
+                        logger.warning(f"⚠️ Ошибка при запросе (попытка {attempt + 1}): {e}")
+                        time.sleep(retry_delay)
+                        retry_delay *= 1.5
+                    else:
+                        logger.error(f"❌ Все попытки исчерпаны для текста: {text[:50]}...")
+                        raise e
         
-            # Задержка между запросами (обязательно!)
+            # Задержка между чанками (чтобы не спамить)
             if i < len(texts) - 1:
-                time.sleep(1.2)  # >1 секунды — чтобы уложиться в лимит
+                time.sleep(1.2)
     
         return all_embeddings
 
@@ -364,7 +375,7 @@ class RAGEngine:
             # Используем httpx для запроса к DeepSeek API
             with httpx.Client(timeout=60.0) as client:
                 response = client.post(
-                    f"{self.base_url}/chat/completions",
+                    f"{self.base_url.strip()}/chat/completions",  # ✅ ДОБАВЛЕН .strip()!
                     headers={
                         "Authorization": f"Bearer {self.api_key}",
                         "Content-Type": "application/json"

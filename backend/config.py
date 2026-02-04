@@ -48,7 +48,7 @@ class Config:
     # DeepSeek настройки
     @property
     def DEEPSEEK_BASE_URL(self):
-        return os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+        return os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")  # ✅ УБРАНЫ ПРОБЕЛЫ!
 
     # Embeddings - Voyage AI (лучше для русского языка)
     @property
@@ -97,15 +97,15 @@ class Config:
     # RAG параметры
     @property
     def CHUNK_SIZE(self):
-        return int(os.getenv("CHUNK_SIZE", "1000"))
+        return int(os.getenv("CHUNK_SIZE", "500"))  # ✅ УМЕНЬШЕНО ДО 500
 
     @property
     def CHUNK_OVERLAP(self):
-        return int(os.getenv("CHUNK_OVERLAP", "200"))
+        return int(os.getenv("CHUNK_OVERLAP", "100"))  # ✅ УВЕЛИЧЕНО ДО 100
 
     @property
     def TOP_K_RESULTS(self):
-        return int(os.getenv("TOP_K_RESULTS", "3"))
+        return int(os.getenv("TOP_K_RESULTS", "7"))  # ✅ УВЕЛИЧЕНО ДО 7
 
     def get_api_key(self):
         """Получить API ключ для генерации"""
@@ -128,7 +128,7 @@ class Config:
     def get_base_url(self):
         """Получить base URL для API"""
         if self.AI_PROVIDER == "deepseek":
-            return self.DEEPSEEK_BASE_URL
+            return self.DEEPSEEK_BASE_URL.strip()  # ✅ ДОБАВЛЕН .strip()!
         return None
 
     def validate(self):

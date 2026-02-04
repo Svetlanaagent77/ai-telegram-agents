@@ -21,7 +21,7 @@ class VoyageEmbeddings:
     ):
         self.api_key = api_key
         self.model = model
-        self.base_url = "https://api.voyageai.com/v1"  # ✅ УБРАНЫ ПРОБЕЛЫ В КОНЦЕ!
+        self.base_url = "https://api.voyageai.com/v1"  # ✅ ПРОБЕЛЫ УБРАНЫ!
     
     def embed(self, text: str, input_type: str = "document") -> List[float]:
         """Получить эмбеддинг для одного текста"""
@@ -54,7 +54,7 @@ class VoyageEmbeddings:
                 try:
                     with httpx.Client(timeout=60.0) as client:
                         response = client.post(
-                            f"{self.base_url}/embeddings",
+                            f"{self.base_url.strip()}/embeddings",  # ✅ ДОБАВЛЕН .strip() для надёжности
                             headers=headers,
                             json=payload
                         )

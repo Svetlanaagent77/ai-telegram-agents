@@ -9,7 +9,6 @@ python-multipart>=0.0.6
 aiogram>=3.4.0
 
 # AI/ML
-openai>=1.6.1
 pinecone>=3.0.0
 httpx>=0.25.0
 

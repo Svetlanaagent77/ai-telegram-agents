@@ -199,6 +199,12 @@ async def admin_panel():
             cursor: not-allowed;
         }
         
+        .btn-small {
+            padding: 8px 15px;
+            font-size: 14px;
+            width: auto;
+        }
+        
         .file-list {
             margin-top: 20px;
         }
@@ -263,30 +269,47 @@ async def admin_panel():
             transition: width 0.3s;
         }
         
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 20px;
-        }
-        
-        .stat {
+        .files-list-container {
+            max-height: 300px;
+            overflow-y: auto;
             background: #f8f9ff;
-            padding: 15px;
             border-radius: 8px;
-            text-align: center;
+            padding: 15px;
+            margin-top: 15px;
         }
         
-        .stat-value {
-            font-size: 28px;
-            font-weight: 700;
-            color: #667eea;
+        .file-row {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
-        .stat-label {
-            color: #666;
-            font-size: 14px;
-            margin-top: 5px;
+        .file-row:last-child {
+            border-bottom: none;
+        }
+        
+        .file-name-display {
+            color: #333;
+            font-weight: 500;
+            flex-grow: 1;
+        }
+        
+        .btn-delete-file {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            white-space: nowrap;
+        }
+        
+        .btn-delete-file:hover {
+            transform: scale(1.05);
         }
     </style>
 </head>
@@ -326,8 +349,23 @@ async def admin_panel():
                     <div class="progress-bar" id="progress-bar-ntd"></div>
                 </div>
                 
-                <!-- Форма удаления -->
+                <!-- Список файлов -->
                 <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #e9ecef;">
+                    <h3 style="color: #666; font-size: 18px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        📁 Загруженные файлы
+                        <button class="btn btn-small" onclick="loadFiles('ntd')">
+                            🔄 Обновить
+                        </button>
+                    </h3>
+                    <div id="files-list-ntd" class="files-list-container">
+                        <div style="color: #999; text-align: center; padding: 20px;">
+                            Нажмите "Обновить" для загрузки списка
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Форма удаления -->
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e9ecef;">
                     <h3 style="color: #666; font-size: 18px; margin-bottom: 15px;">🗑️ Удалить документ</h3>
                     <input 
                         type="text" 
@@ -370,8 +408,23 @@ async def admin_panel():
                     <div class="progress-bar" id="progress-bar-docs"></div>
                 </div>
                 
-                <!-- Форма удаления -->
+                <!-- Список файлов -->
                 <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #e9ecef;">
+                    <h3 style="color: #666; font-size: 18px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        📁 Загруженные файлы
+                        <button class="btn btn-small" onclick="loadFiles('docs')">
+                            🔄 Обновить
+                        </button>
+                    </h3>
+                    <div id="files-list-docs" class="files-list-container">
+                        <div style="color: #999; text-align: center; padding: 20px;">
+                            Нажмите "Обновить" для загрузки списка
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Форма удаления -->
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e9ecef;">
                     <h3 style="color: #666; font-size: 18px; margin-bottom: 15px;">🗑️ Удалить документ</h3>
                     <input 
                         type="text" 
@@ -495,6 +548,9 @@ async def admin_panel():
                     selectedFiles[type] = [];
                     document.getElementById(`files-${type}`).innerHTML = '';
                     document.getElementById(`file-${type}`).value = '';
+                    
+                    // Обновить список файлов
+                    loadFiles(type);
                 } else {
                     throw new Error(result.detail || 'Ошибка загрузки');
                 }
@@ -544,6 +600,9 @@ async def admin_panel():
                     statusDiv.className = 'status success';
                     statusDiv.textContent = `✅ Документ "${filename}" удалён!`;
                     filenameInput.value = '';
+                    
+                    // Обновить список файлов
+                    loadFiles(type);
                 } else {
                     throw new Error(result.detail || 'Ошибка удаления');
                 }
@@ -552,6 +611,79 @@ async def admin_panel():
                 statusDiv.textContent = `❌ Ошибка: ${error.message}`;
             }
         }
+        
+        async function loadFiles(type) {
+            const listDiv = document.getElementById(`files-list-${type}`);
+            listDiv.innerHTML = '<div style="text-align: center; padding: 15px; color: #667eea;">⏳ Загрузка...</div>';
+            
+            try {
+                const response = await fetch(`/list-files?agent_type=${type}`);
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    if (result.files.length === 0) {
+                        listDiv.innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">📁 Нет загруженных файлов</div>';
+                    } else {
+                        let html = `<div style="color: #666; font-size: 14px; margin-bottom: 10px; text-align: center;">
+                            Всего: <strong>${result.count}</strong> файлов
+                        </div>`;
+                        html += '<div style="margin-top: 10px;">';
+                        
+                        result.files.forEach(filename => {
+                            html += `
+                                <div class="file-row">
+                                    <span class="file-name-display">📄 ${filename}</span>
+                                    <button 
+                                        class="btn-delete-file"
+                                        onclick="quickDelete('${type}', '${filename.replace(/'/g, "\\'")}')"
+                                    >
+                                        🗑️ Удалить
+                                    </button>
+                                </div>
+                            `;
+                        });
+                        
+                        html += '</div>';
+                        listDiv.innerHTML = html;
+                    }
+                } else {
+                    throw new Error(result.detail || 'Ошибка загрузки списка');
+                }
+            } catch (error) {
+                listDiv.innerHTML = `<div style="color: #dc3545; text-align: center; padding: 20px;">❌ ${error.message}</div>`;
+            }
+        }
+        
+        function quickDelete(type, filename) {
+            if (!confirm(`Удалить "${filename}" из базы ${type}?`)) return;
+            
+            const formData = new FormData();
+            formData.append('filename', filename);
+            formData.append('agent_type', type);
+            
+            fetch('/delete', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(`✅ ${result.message}`);
+                    loadFiles(type);
+                } else {
+                    alert(`❌ ${result.detail}`);
+                }
+            })
+            .catch(error => {
+                alert(`❌ Ошибка: ${error.message}`);
+            });
+        }
+        
+        // Автозагрузка при открытии страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFiles('ntd');
+            loadFiles('docs');
+        });
     </script>
 </body>
 </html>
@@ -614,7 +746,7 @@ async def upload_documents(
                     'id': doc_id,
                     'text': chunk['text'],
                     'metadata': {
-                        'agent_type': agent_type,  # ВАЖНО! Для фильтрации
+                        'agent_type': agent_type,
                         'filename': filename,
                         'chunk_id': chunk['chunk_id'],
                         'source': str(file_path),
@@ -680,6 +812,53 @@ async def delete_document(
     
     except Exception as e:
         logger.error(f"❌ Ошибка удаления: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}
+        )
+
+@app.get("/list-files")
+async def list_files(agent_type: str):
+    """Получить список загруженных файлов"""
+    if agent_type not in ['ntd', 'docs']:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Неверный тип агента. Используйте 'ntd' или 'docs'"}
+        )
+    
+    if agent_type not in rag_engines:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"RAG engine для {agent_type} не инициализирован"}
+        )
+    
+    try:
+        # Ищем все векторы с фильтром по типу агента
+        search_filter = {"agent_type": agent_type}
+        
+        results = rag_engines[agent_type].index.query(
+            vector=[0] * 1024,  # Нулевой вектор
+            top_k=10000,
+            include_metadata=True,
+            filter=search_filter
+        )
+        
+        # Извлекаем уникальные имена файлов
+        filenames = set()
+        for match in results['matches']:
+            filename = match['metadata'].get('filename')
+            if filename:
+                filenames.add(filename)
+        
+        return {
+            "success": True,
+            "files": sorted(list(filenames)),
+            "count": len(filenames),
+            "agent_type": agent_type
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка получения списка файлов: {e}")
         return JSONResponse(
             status_code=500,
             content={"detail": str(e)}

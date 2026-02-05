@@ -833,6 +833,10 @@ async def list_files(agent_type: str):
         )
     
     try:
+        # Инициализируем индекс, если он ещё не инициализирован
+        if rag_engines[agent_type].index is None:
+            rag_engines[agent_type].init_index()
+        
         # Ищем все векторы с фильтром по типу агента
         search_filter = {"agent_type": agent_type}
         

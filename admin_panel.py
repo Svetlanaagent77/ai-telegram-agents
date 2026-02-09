@@ -819,7 +819,7 @@ async def delete_document(
 
 @app.get("/list-files")
 async def list_files(agent_type: str):
-    """Получить список загруженных файлов"""
+    """Получить список загруженных файлов (оптимизированная версия)"""
     if agent_type not in ['ntd', 'docs']:
         return JSONResponse(
             status_code=400,
@@ -833,26 +833,41 @@ async def list_files(agent_type: str):
         )
     
     try:
-        # Инициализируем индекс, если он ещё не инициализирован
+        # Инициализируем индекс, если нужно
         if rag_engines[agent_type].index is None:
             rag_engines[agent_type].init_index()
         
-        # Ищем все векторы с фильтром по типу агента
+        # Получаем уникальные имена файлов через метаданные
+        filenames = set()
         search_filter = {"agent_type": agent_type}
         
-        results = rag_engines[agent_type].index.query(
-            vector=[0] * 1024,  # Нулевой вектор
-            top_k=10000,
-            include_metadata=True,
-            filter=search_filter
-        )
+        # Загружаем постранично (максимум 1000 векторов за раз)
+        batch_size = 1000
+        total_fetched = 0
+        max_total = 10000  # Максимум для бесплатного тарифа
         
-        # Извлекаем уникальные имена файлов
-        filenames = set()
-        for match in results['matches']:
-            filename = match['metadata'].get('filename')
-            if filename:
-                filenames.add(filename)
+        while total_fetched < max_total:
+            results = rag_engines[agent_type].index.query(
+                vector=[0] * 1024,
+                top_k=batch_size,
+                include_metadata=True,
+                filter=search_filter,
+                offset=total_fetched  # Постраничная навигация
+            )
+            
+            if not results['matches']:
+                break
+                
+            for match in results['matches']:
+                filename = match['metadata'].get('filename')
+                if filename:
+                    filenames.add(filename)
+            
+            total_fetched += len(results['matches'])
+            
+            # Если получили меньше, чем запрашивали — больше данных нет
+            if len(results['matches']) < batch_size:
+                break
         
         return {
             "success": True,
